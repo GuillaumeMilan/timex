@@ -167,13 +167,33 @@ defmodule Timex do
   Converts the given Unix time to DateTime.
 
   The integer can be given in different units according to `System.convert_time_unit/3`
-  and it will be converted to microseconds internally. Defaults to `:seconds`.
+  and it will be converted to microseconds internally. Defaults to `:second`.
 
   Unix times are always in UTC and therefore the DateTime will be returned in UTC.
   """
-  @spec from_unix(secs :: non_neg_integer, :native | System.time_unit()) ::
+  @spec from_unix(secs :: non_neg_integer, :native | Types.second_time_units()) ::
           DateTime.t() | no_return
-  def from_unix(secs, unit \\ :seconds), do: DateTime.from_unix!(secs, unit)
+  def from_unix(secs, unit \\ :second)
+
+  def from_unix(secs, :seconds) do
+    from_unix(secs, :second)
+  end
+
+  def from_unix(secs, :milliseconds) do
+    from_unix(secs, :millisecond)
+  end
+
+  def from_unix(secs, :microseconds) do
+    from_unix(secs, :microsecond)
+  end
+
+  def from_unix(secs, :nanoseconds) do
+    from_unix(secs, :nanosecond)
+  end
+
+  def from_unix(secs, unit) do
+    DateTime.from_unix!(secs, unit)
+  end
 
   @doc """
   Formats a date/time value using the given format string (and optional formatter).
@@ -191,12 +211,12 @@ defmodule Timex do
   ## Examples
 
       iex> date = ~D[2016-02-29]
-      ...> Timex.format!(date, "{YYYY}-{0M}-{D}")
-      "2016-02-29"
+      ...> Timex.format(date, "{YYYY}-{0M}-{D}")
+      {:ok, "2016-02-29"}
 
       iex> datetime = Timex.to_datetime({{2016,2,29},{22,25,0}}, "Etc/UTC")
-      ...> Timex.format!(datetime, "{ISO:Extended}")
-      "2016-02-29T22:25:00+00:00"
+      ...> Timex.format(datetime, "{ISO:Extended}")
+      {:ok, "2016-02-29T22:25:00+00:00"}
   """
   @spec format(Types.valid_datetime(), format :: String.t()) :: {:ok, String.t()} | {:error, term}
   defdelegate format(datetime, format_string), to: Timex.Format.DateTime.Formatter
@@ -208,8 +228,8 @@ defmodule Timex do
 
       iex> use Timex
       ...> datetime = Timex.to_datetime({{2016,2,29},{22,25,0}}, "America/Chicago")
-      iex> Timex.format!(datetime, "%FT%T%:z", :strftime)
-      "2016-02-29T22:25:00-06:00"
+      iex> Timex.format(datetime, "%FT%T%:z", :strftime)
+      {:ok, "2016-02-29T22:25:00-06:00"}
   """
   @spec format(Types.valid_datetime(), format :: String.t(), formatter :: atom) ::
           {:ok, String.t()} | {:error, term}
@@ -241,17 +261,26 @@ defmodule Timex do
     to: Timex.Format.DateTime.Formatter
 
   @doc """
-  Same as format/2, except format! raises on error.
+  Same as format/2, except it returns only the value (not a tuple) and raises on error.
 
-  See format/2 docs for usage examples.
+  ## Examples
+
+      iex> date = ~D[2016-02-29]
+      ...> Timex.format!(date, "{YYYY}-{0M}-{D}")
+      "2016-02-29"
   """
   @spec format!(Types.valid_datetime(), format :: String.t()) :: String.t() | no_return
   defdelegate format!(datetime, format_string), to: Timex.Format.DateTime.Formatter
 
   @doc """
-  Same as format/3, except format! raises on error.
+  Same as format/3, except it returns only the value (not a tuple) and raises on error.
 
-  See format/3 docs for usage examples
+  ## Examples
+
+      iex> use Timex
+      ...> datetime = Timex.to_datetime({{2016,2,29},{22,25,0}}, "America/Chicago")
+      iex> Timex.format!(datetime, "%FT%T%:z", :strftime)
+      "2016-02-29T22:25:00-06:00"
   """
   @spec format!(Types.valid_datetime(), format :: String.t(), formatter :: atom) ::
           String.t() | no_return
@@ -927,28 +956,38 @@ defmodule Timex do
 
   You can optionally specify a comparison granularity, any of the following:
 
+  - :year
   - :years
+  - :month
   - :months
+  - :week
   - :weeks
-  - :calendar_weeks (weeks of the calendar as opposed to actual weeks in terms of days)
+  - :calendar_week (weeks of the calendar as opposed to actual weeks in terms of days)
+  - :calendar_weeks
+  - :day
   - :days
+  - :hour
   - :hours
+  - :minute
   - :minutes
+  - :second
   - :seconds
+  - :millisecond
   - :milliseconds
-  - :microseconds (default)
+  - :microsecond (default)
+  - :microseconds
   - :duration
 
   and the dates will be compared with the cooresponding accuracy.
-  The default granularity is :microseconds.
+  The default granularity is `:microsecond`.
 
   ## Examples
 
       iex> date1 = ~D[2014-03-04]
       iex> date2 = ~D[2015-03-04]
-      iex> Timex.compare(date1, date2, :years)
+      iex> Timex.compare(date1, date2, :year)
       -1
-      iex> Timex.compare(date2, date1, :years)
+      iex> Timex.compare(date2, date1, :year)
       1
       iex> Timex.compare(date1, date1)
       0
@@ -965,9 +1004,9 @@ defmodule Timex do
   @doc """
   See docs for `diff/3`
   """
-  @spec diff(Time, Time) :: Types.timestamp() | {:error, term}
+  @spec diff(Time, Time) :: Duration.t() | integer | {:error, term}
   @spec diff(Comparable.comparable(), Comparable.comparable()) ::
-          Types.timestamp() | {:error, term}
+          Duration.t() | integer | {:error, term}
   def diff(%Time{} = a, %Time{} = b), do: diff(a, b, :microseconds)
   defdelegate diff(a, b), to: Timex.Comparable
 
@@ -978,16 +1017,26 @@ defmodule Timex do
 
   You must specify one of the following units:
 
+  - :year
   - :years
+  - :month
   - :months
-  - :calendar_weeks (weeks of the calendar as opposed to actual weeks in terms of days)
+  - :week
   - :weeks
+  - :calendar_week (weeks of the calendar as opposed to actual weeks in terms of days)
+  - :calendar_weeks
+  - :day
   - :days
+  - :hour
   - :hours
+  - :minute
   - :minutes
+  - :second
   - :seconds
+  - :millisecond
   - :milliseconds
-  - :microseconds (default)
+  - :microsecond (default)
+  - :microseconds
   - :duration
 
   and the result will be an integer value of those units or a Duration.
@@ -996,7 +1045,18 @@ defmodule Timex do
   @spec diff(Comparable.comparable(), Comparable.comparable(), Comparable.granularity()) ::
           Duration.t() | integer | {:error, term}
   def diff(%Time{}, %Time{}, granularity)
-      when granularity in [:days, :weeks, :calendar_weeks, :months, :years] do
+      when granularity in [
+             :day,
+             :days,
+             :week,
+             :weeks,
+             :calendar_week,
+             :calendar_weeks,
+             :month,
+             :months,
+             :year,
+             :years
+           ] do
     0
   end
 
@@ -1006,11 +1066,11 @@ defmodule Timex do
 
     case granularity do
       :duration -> Duration.from_seconds(div(a - b, 1_000 * 1_000))
-      :microseconds -> a - b
-      :milliseconds -> div(a - b, 1_000)
-      :seconds -> div(a - b, 1_000 * 1_000)
-      :minutes -> div(a - b, 1_000 * 1_000 * 60)
-      :hours -> div(a - b, 1_000 * 1_000 * 60 * 60)
+      us when us in [:microseconds, :microsecond] -> a - b
+      ms when ms in [:milliseconds, :millisecond] -> div(a - b, 1_000)
+      s when s in [:seconds, :second] -> div(a - b, 1_000 * 1_000)
+      min when min in [:minutes, :minute] -> div(a - b, 1_000 * 1_000 * 60)
+      h when h in [:hours, :hour] -> div(a - b, 1_000 * 1_000 * 60 * 60)
       _ -> {:error, {:invalid_granularity, granularity}}
     end
   end
@@ -1285,7 +1345,7 @@ defmodule Timex do
 
       iex> date = ~N[2015-06-15T12:30:00Z]
       iex> Timex.end_of_month(date)
-      ~N[2015-06-30T23:59:59.999999Z]
+      ~N[2015-06-30T23:59:59Z]
 
   """
   @spec end_of_month(Types.valid_datetime()) :: Types.valid_datetime() | {:error, term}
@@ -1343,7 +1403,7 @@ defmodule Timex do
 
       iex> date = ~N[2015-06-15T12:30:00]
       ...> Timex.end_of_quarter(date)
-      ~N[2015-06-30T23:59:59.999999]
+      ~N[2015-06-30T23:59:59]
 
       iex> Timex.end_of_quarter(2015, 4)
       ~D[2015-06-30]
@@ -1388,7 +1448,7 @@ defmodule Timex do
 
       iex> date = ~N[2015-06-15T00:00:00]
       iex> Timex.end_of_year(date)
-      ~N[2015-12-31T23:59:59.999999]
+      ~N[2015-12-31T23:59:59]
 
       iex> Timex.end_of_year(2015)
       ~D[2015-12-31]
@@ -1503,7 +1563,7 @@ defmodule Timex do
 
       iex> date = ~N[2015-11-30T13:30:30] # Monday 30th November
       ...> Timex.end_of_week(date)
-      ~N[2015-12-06T23:59:59.999999]
+      ~N[2015-12-06T23:59:59]
 
       iex> date = ~D[2015-11-30] # Monday 30th November
       ...> Timex.end_of_week(date, :sun)
@@ -1538,7 +1598,7 @@ defmodule Timex do
 
       iex> date = ~N[2015-01-01T13:14:15]
       ...> Timex.end_of_day(date)
-      ~N[2015-01-01T23:59:59.999999]
+      ~N[2015-01-01T23:59:59]
 
   """
   @spec end_of_day(Types.valid_datetime()) :: Types.valid_datetime() | {:error, term}
@@ -1602,7 +1662,7 @@ defmodule Timex do
       ...> %DateTime{hour: 3} = Timex.shift(datetime, hours: 1)
       ...> shifted = Timex.shift(datetime, hours: 2)
       ...> {datetime.zone_abbr, shifted.zone_abbr, shifted.hour}
-      {"CST", "CDT", 4}
+      {"CST", "CDT", 3}
 
   ### Shifting and leap days
 

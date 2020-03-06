@@ -5,6 +5,40 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- TBD
+
+## 3.6.1
+
+### Potentially Breaking
+
+- Require Elixir v1.6+
+ 
+### Added
+
+- Setup property based test framework and add sample tests (#480)
+- Turkish translation (#534)
+- Add details to parsing documentation (#540)
+- Support time units in singular (#509)
+- #538 documentation of default formatting directives
+- Support for tzdata 1.0.0 (#536)
+
+### Fixed
+
+- Address handling of ambiguity in timezone conversions by using UTC clock time, where possible. See #488
+- #491 gracefully handle errors resolving a timezone using wall clock time
+- #514 gracefully handle converting date to datetime on tz boundary
+- #531 address some issues with shifting over timezone boundaries
+- #507 unnecessary tz conversion during logical shifts results in erroneous results
+- #532 shift priority incorrectly inverted
+- #537 precision not preserved in some situations
+- Elixir 1.8 deprecations
+- `Timex.diff/2` spec
+- `Timex.Timezone.convert/2` when using custom time zones
+- Letter encoding on PT translation
+- Swedish translation id for March
+
+## 3.5.0
+
 ### Added
 
 - `Timex.set/2` now also accepts setting the `:date` from a `%Date{}` struct.
